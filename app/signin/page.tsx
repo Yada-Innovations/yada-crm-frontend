@@ -1,21 +1,42 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiPost, saveToken } from "@/lib/api";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  function handleSignIn(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      setError(true);
+      setError("Enter your email and password to continue.");
       return;
     }
-    setError(false);
-    // TODO: wire this up to POST /api/auth/login on the Laravel backend
-    console.log("Sign in attempt:", email);
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await apiPost("/auth/login", { email, password });
+
+      if (data.token) {
+        saveToken(data.token);
+        // Store user info for later use
+        localStorage.setItem("user", JSON.stringify(data.user));
+        router.push("/dashboard");
+      } else {
+        setError(data.message || "Invalid credentials.");
+      }
+    } catch {
+      setError("Could not connect to server. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -30,7 +51,7 @@ export default function SignInPage() {
         {error && (
           <div className="error-banner">
             <i className="ti ti-alert-circle"></i>
-            <span>Enter your email and password to continue.</span>
+            <span>{error}</span>
           </div>
         )}
 
@@ -56,10 +77,18 @@ export default function SignInPage() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <span style={{ fontSize: 11, color: "var(--purple)", cursor: "pointer" }}>Forgot password?</span>
+          <span style={{ fontSize: 11, color: "var(--purple)", cursor: "pointer" }}>
+            Forgot password?
+          </span>
         </div>
-        <button type="submit" className="btn btn-primary" style={{ height: 38, justifyContent: "center" }}>
-          Sign in
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          style={{ height: 38, justifyContent: "center" }}
+          disabled={loading}
+        >
+          {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
     </div>

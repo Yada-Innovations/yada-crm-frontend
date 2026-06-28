@@ -1,10 +1,26 @@
 "use client";
 
 export function usePermissions() {
-  if (typeof window === "undefined") return { can: () => false, role: null };
+  if (typeof window === "undefined") return {
+    can: () => false,
+    canAny: () => false,
+    role: null,
+    permissions: [],
+    isAdmin: false,
+    isSalesAgent: false,
+    isSupportAgent: false,
+  };
 
   const stored = localStorage.getItem("user");
-  if (!stored) return { can: () => false, role: null };
+  if (!stored) return {
+    can: () => false,
+    canAny: () => false,
+    role: null,
+    permissions: [],
+    isAdmin: false,
+    isSalesAgent: false,
+    isSupportAgent: false,
+  };
 
   const user = JSON.parse(stored);
   const permissions: string[] = user.permissions ?? [];
@@ -18,5 +34,25 @@ export function usePermissions() {
     return perms.some(p => permissions.includes(p));
   }
 
-  return { can, canAny, role, permissions };
+  // Helper to check if user has ANY permission for a module
+  function canAccessModule(module: string): boolean {
+    const modulePermissions = [
+      `${module}.view`,
+      `${module}.create`,
+      `${module}.edit`,
+      `${module}.delete`
+    ];
+    return modulePermissions.some(p => permissions.includes(p));
+  }
+
+  return {
+    can,
+    canAny,
+    canAccessModule,
+    role,
+    permissions,
+    isAdmin: role === "admin",
+    isSalesAgent: role === "sales_agent",
+    isSupportAgent: role === "support_agent",
+  };
 }

@@ -7,10 +7,11 @@ import { Spinner } from "./Spinner";
 import { usePermissions } from "../_hooks/usePermissions";
 
 export function ScreenDashboard() {
-  const [data, setData] = useState<any>(null);
-  const { can, role }   = usePermissions();
+  const [data, setData]       = useState<any>(null);
+  const { can, role }         = usePermissions();
 
   useEffect(() => { apiGet('/dashboard').then(setData); }, []);
+
   if (!data) return <Spinner />;
 
   const funnel = [
@@ -21,7 +22,6 @@ export function ScreenDashboard() {
     { label: "Closed Won",  count: data.leads_by_stage?.closed_won ?? 0,       pct: 13 },
   ];
 
-  // Stats visible based on permissions
   const stats = [
     { label: "MRR",            value: `KES ${Number(data.mrr).toLocaleString()}`, color: "var(--teal-light)",  show: can('analytics.view') },
     { label: "ARR",            value: `KES ${Number(data.arr).toLocaleString()}`, color: "var(--purple)",      show: can('analytics.view') },
@@ -31,11 +31,14 @@ export function ScreenDashboard() {
     { label: "Total leads",    value: data.total_leads,                           color: "var(--purple)",      show: can('leads.view') },
   ].filter(s => s.show);
 
+  const cols = Math.min(stats.length, 4);
+
   return (
     <div>
       <Topbar title="Dashboard" />
 
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(stats.length, 4)},1fr)`, gap: 12, marginBottom: 16 }}>
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 12, marginBottom: 16 }}>
         {stats.map(s => (
           <Card key={s.label} style={{ padding: 14 }}>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 6 }}>{s.label}</div>
@@ -46,6 +49,7 @@ export function ScreenDashboard() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: can('leads.view') ? "1.4fr 1fr" : "1fr", gap: 14 }}>
+        {/* Sales funnel — only for roles with leads access */}
         {can('leads.view') && (
           <Card>
             <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 12 }}>Sales funnel</div>
@@ -61,6 +65,7 @@ export function ScreenDashboard() {
           </Card>
         )}
 
+        {/* Recent activity */}
         <Card>
           <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 12 }}>Recent activity</div>
           {data.recent_activity?.length === 0 && (
@@ -76,11 +81,14 @@ export function ScreenDashboard() {
             </div>
           ))}
 
-          {/* Role-specific tip */}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "0.5px solid var(--border)", fontSize: 11, color: "var(--text-3)" }}>
-            {role === "sales_agent" && "Tip: Quotes enforce a minimum 50% profit margin automatically."}
-            {role === "support_agent" && "Tip: Resolve high priority tickets within 4 hours per SLA."}
-            {role === "admin" && "You have full system access across all modules."}
+          {/* Role tip */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "0.5px solid var(--border)", fontSize: 11, color: "var(--text-3)", display: "flex", alignItems: "flex-start", gap: 7 }}>
+            <i className="ti ti-info-circle" style={{ flexShrink: 0, marginTop: 1 }}></i>
+            <span>
+              {role === "sales_agent"   && "Quotes enforce a minimum 50% profit margin automatically."}
+              {role === "support_agent" && "SLA target: resolve high priority tickets within 4 hours."}
+              {role === "admin"         && "You have full system access across all modules."}
+            </span>
           </div>
         </Card>
       </div>

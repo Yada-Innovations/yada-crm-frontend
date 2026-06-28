@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost, saveToken } from "@/lib/api";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -22,12 +21,23 @@ export default function SignInPage() {
     setError("");
 
     try {
-      const data = await apiPost("/auth/login", { email, password });
+      const res = await fetch("http://127.0.0.1:8000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
 
       if (data.token) {
-        saveToken(data.token);
-        // Store user info for later use
+        // Save token and user data
+        localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        
+        // Redirect to dashboard
         router.push("/dashboard");
       } else {
         setError(data.message || "Invalid credentials.");

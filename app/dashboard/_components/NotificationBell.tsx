@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { apiGet, apiPatch, apiDelete, apiPost } from "@/lib/api";
 
 export function NotificationBell() {
@@ -7,13 +8,14 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 30000);
     
-    // Close dropdown when clicking outside
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -27,10 +29,20 @@ export function NotificationBell() {
     };
   }, []);
 
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
+
   async function loadNotifications() {
     try {
       const data = await apiGet('/notifications');
-      console.log('Notifications loaded:', data); // Debug log
       if (data && data.notifications) {
         setNotifications(data.notifications);
         setUnreadCount(data.unread_count || 0);
@@ -69,7 +81,6 @@ export function NotificationBell() {
   }
 
   function toggleDropdown() {
-    console.log('Toggling dropdown, current state:', isOpen); // Debug log
     setIsOpen(!isOpen);
   }
 
@@ -94,8 +105,9 @@ export function NotificationBell() {
   }
 
   return (
-    <div ref={dropdownRef} style={{ position: "relative", display: "inline-block" }}>
+    <>
       <button
+        ref={buttonRef}
         onClick={toggleDropdown}
         style={{
           position: "relative",
@@ -130,20 +142,23 @@ export function NotificationBell() {
         )}
       </button>
 
-      {isOpen && (
-        <div style={{
-          position: "absolute",
-          right: 0,
-          top: "calc(100% + 8px)",
-          width: 380,
-          maxHeight: 500,
-          background: "var(--bg-panel)",
-          borderRadius: "var(--radius-lg)",
-          border: "0.5px solid var(--border)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-          overflow: "hidden",
-          zIndex: 1000,
-        }}>
+      {isOpen && typeof window !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "fixed",
+            top: dropdownPosition.top,
+            right: dropdownPosition.right,
+            width: 380,
+            maxHeight: 500,
+            background: "var(--bg-panel)",
+            borderRadius: "var(--radius-lg)",
+            border: "0.5px solid var(--border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            overflow: "hidden",
+            zIndex: 99999,
+          }}
+        >
           {/* Header */}
           <div style={{
             display: "flex",
@@ -288,8 +303,9 @@ export function NotificationBell() {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

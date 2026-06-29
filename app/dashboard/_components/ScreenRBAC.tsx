@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { Topbar } from "./Topbar";
 import { Spinner } from "./Spinner";
 
@@ -29,7 +29,7 @@ const ROLE_META: Record<string, { icon: string; color: string; bg: string; canDe
   support_agent: { icon: "ti-headset", color: "var(--blue-light)", bg: "rgba(133,183,235,0.12)", canDelete: true },
 };
 
-type ModalMode = "view" | "edit" | null;
+type ModalMode = "view" | "edit" | "create" | null;
 
 export function ScreenRBAC() {
   const [users, setUsers] = useState<any[]>([]);
@@ -40,6 +40,16 @@ export function ScreenRBAC() {
   const [editPermissions, setEditPermissions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  
+  // ── Create Role State ──
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    display_name: "",
+    description: "",
+    permissions: [] as string[],
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   // ── Load data ──
   function loadData() {
@@ -48,7 +58,6 @@ export function ScreenRBAC() {
       apiGet('/admin/users'),
       apiGet('/admin/roles')
     ]).then(([usersData, rolesData]) => {
-      console.log('Roles data loaded:', rolesData); // Debug log
       setUsers(Array.isArray(usersData) ? usersData : []);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
       setLoading(false);
@@ -79,13 +88,11 @@ export function ScreenRBAC() {
   // ── Get role ID safely ──
   function getRoleId(role: any): number | string | null {
     if (!role) return null;
-    // Try different possible ID fields
     return role.id || role.role_id || role._id || null;
   }
 
   // ── Open edit modal ──
   function openEdit(role: any) {
-    console.log('Opening edit for role:', role); // Debug log
     const perms = getRolePermissions(role.name);
     setSelectedRole(role);
     setEditPermissions([...perms]);
@@ -99,12 +106,25 @@ export function ScreenRBAC() {
     setModal("view");
   }
 
+  // ── Open create modal ──
+  function openCreate() {
+    setCreateForm({
+      name: "",
+      display_name: "",
+      description: "",
+      permissions: [],
+    });
+    setCreateError("");
+    setModal("create");
+  }
+
   // ── Close modal ──
   function closeModal() {
     setModal(null);
     setSelectedRole(null);
     setEditPermissions([]);
     setSaveMessage(null);
+    setCreateError("");
   }
 
   // ── Toggle a permission in edit mode ──
@@ -118,9 +138,25 @@ export function ScreenRBAC() {
     });
   }
 
+  // ── Toggle a permission in create mode ──
+  function toggleCreatePermission(permission: string) {
+    setCreateForm(prev => {
+      if (prev.permissions.includes(permission)) {
+        return { ...prev, permissions: prev.permissions.filter(p => p !== permission) };
+      } else {
+        return { ...prev, permissions: [...prev.permissions, permission] };
+      }
+    });
+  }
+
   // ── Check if a permission is selected ──
   function isPermissionSelected(permission: string): boolean {
     return editPermissions.includes(permission);
+  }
+
+  // ── Check if a permission is selected in create mode ──
+  function isCreatePermissionSelected(permission: string): boolean {
+    return createForm.permissions.includes(permission);
   }
 
   // ── Save permissions to database ──
@@ -131,8 +167,6 @@ export function ScreenRBAC() {
     }
     
     const roleId = getRoleId(selectedRole);
-    console.log('Role ID:', roleId, 'Selected role:', selectedRole); // Debug log
-    
     if (!roleId) {
       setSaveMessage({ type: 'error', text: '❌ Role ID not found. Please refresh and try again.' });
       return;
@@ -141,29 +175,18 @@ export function ScreenRBAC() {
     setSaving(true);
     setSaveMessage(null);
     
-    console.log('Saving permissions for role:', selectedRole.name, 'ID:', roleId);
-    console.log('Permissions to save:', editPermissions);
-    
     try {
       const res = await apiPatch(`/admin/roles/${roleId}/permissions`, {
         permissions: editPermissions,
       });
       
-      console.log('Save response:', res);
-      
       if (res.message) {
         setSaveMessage({ type: 'success', text: '✅ ' + res.message });
-        // Reload data after a moment
         setTimeout(() => {
           loadData();
         }, 1000);
-      } else if (res.error || res.message?.includes('error')) {
-        setSaveMessage({ type: 'error', text: '❌ ' + (res.message || 'Failed to save') });
       } else {
-        setSaveMessage({ type: 'success', text: '✅ Permissions saved successfully!' });
-        setTimeout(() => {
-          loadData();
-        }, 1000);
+        setSaveMessage({ type: 'error', text: '❌ Failed to save permissions' });
       }
     } catch (error: any) {
       console.error('Save error:', error);
@@ -173,6 +196,41 @@ export function ScreenRBAC() {
       });
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Create new role ──
+  async function handleCreateRole() {
+    if (!createForm.name.trim()) {
+      setCreateError('Role name is required');
+      return;
+    }
+
+    setCreateLoading(true);
+    setCreateError('');
+
+    try {
+      const res = await apiPost('/admin/roles', {
+        name: createForm.name.trim().toLowerCase().replace(/\s+/g, '_'),
+        display_name: createForm.display_name || createForm.name,
+        description: createForm.description || '',
+        permissions: createForm.permissions,
+      });
+
+      if (res.message || res.id) {
+        setSaveMessage({ type: 'success', text: '✅ Role created successfully!' });
+        setTimeout(() => {
+          loadData();
+          closeModal();
+        }, 1000);
+      } else {
+        setCreateError(res.message || res.error || 'Failed to create role');
+      }
+    } catch (error: any) {
+      console.error('Create role error:', error);
+      setCreateError('Error: ' + (error.message || 'Failed to create role'));
+    } finally {
+      setCreateLoading(false);
     }
   }
 
@@ -194,7 +252,7 @@ export function ScreenRBAC() {
   return (
     <div>
       <Topbar title="Roles & Permissions">
-        <button className="btn btn-primary" onClick={() => alert('Create role functionality coming soon')}>
+        <button className="btn btn-primary" onClick={openCreate}>
           <i className="ti ti-plus"></i>Create Role
         </button>
       </Topbar>
@@ -237,7 +295,6 @@ export function ScreenRBAC() {
             </div>
 
             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-              {/* View */}
               <button
                 onClick={() => openView(r)}
                 title="View permissions"
@@ -251,7 +308,6 @@ export function ScreenRBAC() {
                 <i className="ti ti-eye" style={{ fontSize: 14 }}></i>
               </button>
 
-              {/* Edit */}
               <button
                 onClick={() => openEdit(r)}
                 title="Edit permissions"
@@ -265,7 +321,6 @@ export function ScreenRBAC() {
                 <i className="ti ti-edit" style={{ fontSize: 14 }}></i>
               </button>
 
-              {/* Delete */}
               {r.canDelete && (
                 <button
                   title="Delete role"
@@ -362,7 +417,6 @@ export function ScreenRBAC() {
             </div>
           </div>
 
-          {/* Save Message */}
           {saveMessage && (
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
@@ -485,9 +539,187 @@ export function ScreenRBAC() {
           </div>
         </Modal>
       )}
+
+      {/* ── CREATE ROLE MODAL ── */}
+      {modal === "create" && (
+        <Modal title="Create New Role" onClose={closeModal}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {createError && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: "var(--red-fill)",
+                border: "0.5px solid var(--red)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 14px",
+                fontSize: 12,
+                color: "var(--red-light)",
+              }}>
+                <i className="ti ti-alert-circle"></i>
+                {createError}
+              </div>
+            )}
+
+            <div>
+              <label style={labelStyle}>ROLE NAME *</label>
+              <input
+                type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                placeholder="e.g. Finance Manager"
+                style={inputStyle}
+              />
+              <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4 }}>
+                This will be used as the system name (lowercase, underscores for spaces)
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>DISPLAY NAME</label>
+              <input
+                type="text"
+                value={createForm.display_name}
+                onChange={(e) => setCreateForm({ ...createForm, display_name: e.target.value })}
+                placeholder="e.g. Finance Manager"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>DESCRIPTION</label>
+              <textarea
+                value={createForm.description}
+                onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                placeholder="What does this role do?"
+                rows={2}
+                style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
+              />
+            </div>
+
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Resource Permissions</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>
+                Select the permissions this role should have.
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {MODULES.map(mod => {
+                  const actions = MODULE_PERMISSIONS[mod] || [];
+                  return (
+                    <div key={mod} style={{ background: "var(--bg-app)", borderRadius: "var(--radius-lg)", padding: 12, border: "0.5px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--purple)" }}></div>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{formatModuleName(mod)}</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {actions.map(action => {
+                          const permission = `${mod}.${action}`;
+                          const has = isCreatePermissionSelected(permission);
+                          return (
+                            <button
+                              key={action}
+                              onClick={() => toggleCreatePermission(permission)}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 4,
+                                padding: "4px 10px", borderRadius: 5, fontSize: 11,
+                                cursor: "pointer",
+                                background: has ? "var(--teal-fill)" : "transparent",
+                                border: `1px solid ${has ? "var(--teal)" : "var(--border-2)"}`,
+                                color: has ? "var(--teal-light)" : "var(--text-3)",
+                                userSelect: "none",
+                                transition: "all 0.2s",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!has) e.currentTarget.style.background = "var(--bg-hover)";
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!has) e.currentTarget.style.background = "transparent";
+                              }}
+                            >
+                              <i 
+                                className={`ti ${has ? "ti-square-rounded-check" : "ti-square-rounded"}`} 
+                                style={{ fontSize: 12 }}
+                              />
+                              {action.charAt(0).toUpperCase() + action.slice(1)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ 
+              padding: 12, 
+              background: "var(--bg-app)", 
+              borderRadius: "var(--radius-md)",
+              fontSize: 12,
+              color: "var(--text-3)"
+            }}>
+              <strong>Selected permissions:</strong> {createForm.permissions.length > 0 ? createForm.permissions.join(', ') : 'None selected'}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <button 
+                className="btn" 
+                onClick={closeModal} 
+                disabled={createLoading}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "var(--radius-md)",
+                  border: "0.5px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-3)",
+                  cursor: createLoading ? "not-allowed" : "pointer",
+                  opacity: createLoading ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleCreateRole} 
+                disabled={createLoading || !createForm.name.trim()}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: "var(--radius-md)",
+                  border: "none",
+                  background: "var(--purple-deep)",
+                  color: "#fff",
+                  cursor: (createLoading || !createForm.name.trim()) ? "not-allowed" : "pointer",
+                  opacity: (createLoading || !createForm.name.trim()) ? 0.5 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {createLoading ? (
+                  <><i className="ti ti-loader" style={{ animation: "spin 1s linear infinite" }}></i> Creating...</>
+                ) : (
+                  <><i className="ti ti-plus"></i> Create Role</>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
+
+// ── Shared Styles ──
+const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 };
+const inputStyle: React.CSSProperties = { 
+  width: "100%", 
+  height: 38, 
+  background: "var(--bg-card)", 
+  border: "0.5px solid var(--border-2)", 
+  borderRadius: "var(--radius-md)", 
+  padding: "0 12px", 
+  fontSize: 13, 
+  color: "var(--text-1)" 
+};
 
 // ── Modal Component ──
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {

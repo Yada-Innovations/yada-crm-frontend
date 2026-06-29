@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePermissions } from "../_hooks/usePermissions";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { LeadForm } from "./LeadForm";
 
 function Topbar({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
@@ -179,7 +180,10 @@ export function ScreenLeads() {
     <div>
       <Topbar title="Leads">
         {can('leads.create') && (
-          <button className="btn btn-primary" onClick={() => { setShowForm(true); setFormError(""); }}>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setShowForm(true)}
+          >
             <i className="ti ti-plus"></i>Add Lead
           </button>
         )}
@@ -335,6 +339,17 @@ export function ScreenLeads() {
             <button className="btn btn-primary" onClick={handleCreateLead} disabled={formLoading}>{formLoading ? <><i className="ti ti-loader"></i>Creating...</> : <><i className="ti ti-plus"></i>Add Lead</>}</button>
           </div>
         </Modal>
+      )}
+
+      {/* ── NEW: LeadForm Modal ── */}
+      {showForm && (
+        <LeadForm
+          onClose={() => setShowForm(false)}
+          onSuccess={() => {
+            load();
+            alert('✅ Lead created successfully!');
+          }}
+        />
       )}
 
       {showDisqualifyModal && selectedLead && (

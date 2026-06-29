@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePermissions } from "../_hooks/usePermissions";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { QuoteForm } from "./QuoteForm";
 
 function Topbar({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
@@ -50,6 +51,7 @@ export function ScreenQuotes() {
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState("all");
   const [showForm, setShowForm] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
   const [form, setForm] = useState({ lead_id: "", base_amount: "", discount_pct: "0", valid_until: "" });
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
@@ -134,7 +136,13 @@ export function ScreenQuotes() {
     <div>
       <Topbar title="Quotes">
         {can('quotes.create') && (
-          <button className="btn btn-primary" onClick={() => { setShowForm(true); setFormError(""); }}>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              setSelectedClientId(undefined);
+              setShowForm(true);
+            }}
+          >
             <i className="ti ti-plus"></i>Create Quote
           </button>
         )}
@@ -251,7 +259,7 @@ export function ScreenQuotes() {
                 )}
                 {isFinal && (
                   <span style={{ fontSize: 10, color: quote.status === "accepted" ? "var(--teal-light)" : "var(--red-light)" }}>
-                    {quote.status === "accepted" ? "✅ Accepted" : quote.status === "rejected" ? "❌ Rejected" : "⏰ Expired"}
+                    {quote.status === "accepted" ? "Accepted" : quote.status === "rejected" ? "Rejected" : "Expired"}
                   </span>
                 )}
               </div>
@@ -264,6 +272,7 @@ export function ScreenQuotes() {
         <i className="ti ti-shield-check"></i> All quotes enforce a minimum 50% profit margin — discounts above 50% are blocked automatically.
       </div>
 
+      {/* ── Old Quote Form Modal ── */}
       {showForm && (
         <Modal title="Create Quote" onClose={() => setShowForm(false)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -331,6 +340,18 @@ export function ScreenQuotes() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {/* ── NEW: QuoteForm Modal ── */}
+      {showForm && (
+        <QuoteForm
+          onClose={() => setShowForm(false)}
+          onSuccess={() => {
+            load();
+            alert('Quote created successfully!');
+          }}
+          clientId={selectedClientId}
+        />
       )}
     </div>
   );

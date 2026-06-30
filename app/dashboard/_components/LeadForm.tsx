@@ -39,7 +39,7 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
     estimated_value: "",
     expected_close_date: "",
     products: [] as string[],
-    decision_maker: "Influencer — recommends to board",
+    decision_maker: "Influencer - recommends to board",
     budget_confirmed: "Not yet confirmed",
     lead_source: "Referral",
     priority: "medium",
@@ -72,7 +72,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
   ];
 
   useEffect(() => {
-    // Load users for assignment dropdown
     apiGet('/admin/users').then(data => {
       if (Array.isArray(data)) {
         setClients(data);
@@ -85,7 +84,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field
     if (formErrors[field]) {
       setFormErrors(prev => {
         const newErrors = { ...prev };
@@ -228,7 +226,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
         border: "0.5px solid var(--border)",
         position: "relative",
       }}>
-        {/* Close button */}
         <button
           onClick={onClose}
           style={{
@@ -243,10 +240,9 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
             zIndex: 10,
           }}
         >
-          ×
+          &times;
         </button>
 
-        {/* Page header */}
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -307,7 +303,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
           </div>
         </div>
 
-        {/* Progress stepper */}
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -362,16 +357,13 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
           })}
         </div>
 
-        {/* Form content */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr 320px",
           gap: 16,
           alignItems: "start",
         }}>
-          {/* Left: form sections */}
           <div>
-            {/* Step 1: Company Information */}
             {currentStep === 1 && (
               <div className="section" style={{
                 background: "var(--bg-card)",
@@ -493,10 +485,10 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
                       }}
                     >
                       <option value="">Select size</option>
-                      <option>1–10 employees</option>
-                      <option>11–50 employees</option>
-                      <option>51–200 employees</option>
-                      <option>201–500 employees</option>
+                      <option>1-10 employees</option>
+                      <option>11-50 employees</option>
+                      <option>51-200 employees</option>
+                      <option>201-500 employees</option>
                       <option>500+ employees</option>
                     </select>
                   </div>
@@ -600,7 +592,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </div>
             )}
 
-            {/* Step 2: Primary Contact */}
             {currentStep === 2 && (
               <div className="section" style={{
                 background: "var(--bg-card)",
@@ -818,11 +809,11 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
                           cursor: "pointer",
                         }}
                       >
-                        <option>🇰🇪 +254</option>
-                        <option>🇺🇬 +256</option>
-                        <option>🇹🇿 +255</option>
-                        <option>🇳🇬 +234</option>
-                        <option>🇿🇦 +27</option>
+                        <option>+254</option>
+                        <option>+256</option>
+                        <option>+255</option>
+                        <option>+234</option>
+                        <option>+27</option>
                       </select>
                       <input
                         type="tel"
@@ -866,8 +857,8 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
                           cursor: "pointer",
                         }}
                       >
-                        <option>🇰🇪 +254</option>
-                        <option>🇺🇬 +256</option>
+                        <option>+254</option>
+                        <option>+256</option>
                       </select>
                       <input
                         type="tel"
@@ -939,7 +930,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </div>
             )}
 
-            {/* Step 3: Deal Information */}
             {currentStep === 3 && (
               <div className="section" style={{
                 background: "var(--bg-card)",
@@ -1061,7 +1051,7 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
                               lineHeight: 1,
                             }}
                           >
-                            ×
+                            &times;
                           </button>
                         </span>
                       ))}
@@ -1104,9 +1094,9 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
                         cursor: "pointer",
                       }}
                     >
-                      <option>Yes — final decision maker</option>
-                      <option>Influencer — recommends to board</option>
-                      <option>User — end user only</option>
+                      <option>Yes - final decision maker</option>
+                      <option>Influencer - recommends to board</option>
+                      <option>User - end user only</option>
                       <option>Unknown</option>
                     </select>
                   </div>
@@ -1249,7 +1239,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </div>
             )}
 
-            {/* Step 4: Assignment & Follow-up */}
             {currentStep === 4 && (
               <div className="section" style={{
                 background: "var(--bg-card)",
@@ -1407,7 +1396,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </div>
             )}
 
-            {/* Step 5: Review */}
             {currentStep === 5 && (
               <div className="section" style={{
                 background: "var(--bg-card)",
@@ -1443,18 +1431,18 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   {[
-                    { label: "Company", value: formData.company_name || "—" },
-                    { label: "Industry", value: formData.industry || "—" },
-                    { label: "Contact", value: `${formData.first_name} ${formData.last_name}`.trim() || "—" },
-                    { label: "Email", value: formData.work_email || "—" },
-                    { label: "Phone", value: `${formData.phone_code}${formData.phone}` || "—" },
-                    { label: "Job Title", value: formData.job_title || "—" },
-                    { label: "Estimated Value", value: formData.estimated_value ? `KES ${parseFloat(formData.estimated_value).toLocaleString()}` : "—" },
-                    { label: "Lead Source", value: formData.lead_source || "—" },
-                    { label: "Priority", value: formData.priority.charAt(0).toUpperCase() + formData.priority.slice(1) || "—" },
+                    { label: "Company", value: formData.company_name || "-" },
+                    { label: "Industry", value: formData.industry || "-" },
+                    { label: "Contact", value: `${formData.first_name} ${formData.last_name}`.trim() || "-" },
+                    { label: "Email", value: formData.work_email || "-" },
+                    { label: "Phone", value: `${formData.phone_code}${formData.phone}` || "-" },
+                    { label: "Job Title", value: formData.job_title || "-" },
+                    { label: "Estimated Value", value: formData.estimated_value ? `KES ${parseFloat(formData.estimated_value).toLocaleString()}` : "-" },
+                    { label: "Lead Source", value: formData.lead_source || "-" },
+                    { label: "Priority", value: formData.priority.charAt(0).toUpperCase() + formData.priority.slice(1) || "-" },
                     { label: "Initial Stage", value: stages.find(s => s.key === formData.initial_stage)?.label || "Lead" },
-                    { label: "Assigned To", value: clients.find(c => c.id === parseInt(formData.assigned_to))?.name || "—" },
-                    { label: "Follow-up Action", value: formData.follow_up_action || "—" },
+                    { label: "Assigned To", value: clients.find(c => c.id === parseInt(formData.assigned_to))?.name || "-" },
+                    { label: "Follow-up Action", value: formData.follow_up_action || "-" },
                   ].map((item) => (
                     <div key={item.label} style={{
                       display: "flex",
@@ -1472,7 +1460,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </div>
             )}
 
-            {/* Navigation buttons */}
             <div style={{
               display: "flex",
               justifyContent: "space-between",
@@ -1557,9 +1544,7 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
             </div>
           </div>
 
-          {/* Right: sidebar */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Live summary */}
             <div style={{
               background: "var(--bg-card)",
               borderRadius: "var(--radius-lg)",
@@ -1571,23 +1556,23 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </h3>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", borderBottom: "0.5px solid var(--border)", color: "var(--text-2)" }}>
                 <span>Company</span>
-                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{formData.company_name || "—"}</span>
+                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{formData.company_name || "-"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", borderBottom: "0.5px solid var(--border)", color: "var(--text-2)" }}>
                 <span>Contact</span>
-                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{`${formData.first_name} ${formData.last_name}`.trim() || "—"}</span>
+                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{`${formData.first_name} ${formData.last_name}`.trim() || "-"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", borderBottom: "0.5px solid var(--border)", color: "var(--text-2)" }}>
                 <span>Industry</span>
-                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{formData.industry || "—"}</span>
+                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{formData.industry || "-"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", borderBottom: "0.5px solid var(--border)", color: "var(--text-2)" }}>
                 <span>Value</span>
-                <span style={{ color: "var(--teal-light)", fontWeight: 500 }}>{formData.estimated_value ? `KES ${parseFloat(formData.estimated_value).toLocaleString()}` : "—"}</span>
+                <span style={{ color: "var(--teal-light)", fontWeight: 500 }}>{formData.estimated_value ? `KES ${parseFloat(formData.estimated_value).toLocaleString()}` : "-"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", borderBottom: "0.5px solid var(--border)", color: "var(--text-2)" }}>
                 <span>Source</span>
-                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{formData.lead_source || "—"}</span>
+                <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{formData.lead_source || "-"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", borderBottom: "0.5px solid var(--border)", color: "var(--text-2)" }}>
                 <span>Priority</span>
@@ -1602,12 +1587,11 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "7px 0", color: "var(--text-2)" }}>
                 <span>Assigned to</span>
                 <span style={{ color: "var(--text-1)", fontWeight: 500 }}>
-                  {clients.find(c => c.id === parseInt(formData.assigned_to))?.name || "—"}
+                  {clients.find(c => c.id === parseInt(formData.assigned_to))?.name || "-"}
                 </span>
               </div>
             </div>
 
-            {/* Completeness */}
             <div style={{
               background: "var(--bg-card)",
               borderRadius: "var(--radius-lg)",
@@ -1674,7 +1658,6 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
               </div>
             </div>
 
-            {/* Tips */}
             <div style={{
               background: "var(--purple-fill)",
               borderRadius: "var(--radius-lg)",
@@ -1688,7 +1671,7 @@ export function LeadForm({ onClose, onSuccess }: LeadFormProps) {
                 • Add a follow-up date to stay on top of this lead<br />
                 • Note the decision maker's budget authority<br />
                 • Record their specific pain points to personalise your pitch<br />
-                • Set a realistic estimated value — this affects pipeline reports
+                • Set a realistic estimated value - this affects pipeline reports
               </div>
             </div>
           </div>

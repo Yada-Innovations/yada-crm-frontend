@@ -1,0 +1,24 @@
+import { Sidebar } from "./_components/Sidebar";
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ 
+      background: "#F9FAFB",  // ← Light grey
+      minHeight: "100vh",
+    }}>
+      <Sidebar>
+        <div style={{
+          padding: "0",
+          minHeight: "100vh",
+          background: "#F9FAFB",  // ← Light grey
+        }}>
+          {children}
+        </div>
+      </Sidebar>
+    </div>
+  );
+}

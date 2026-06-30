@@ -26,6 +26,33 @@ function Spinner() {
   );
 }
 
+const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 };
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 38,
+  background: "var(--bg-card)",
+  border: "0.5px solid var(--border-2)",
+  borderRadius: "var(--radius-md)",
+  padding: "0 12px",
+  fontSize: 13,
+  color: "var(--text-1)",
+};
+const selectStyle: React.CSSProperties = { ...inputStyle, cursor: "pointer" };
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div style={{ background: "var(--bg-panel)", borderRadius: "var(--radius-lg)", width: 540, maxHeight: "88vh", display: "flex", flexDirection: "column", border: "0.5px solid var(--border)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "0.5px solid var(--border)", flexShrink: 0 }}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>{title}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 22, lineHeight: 1 }}>&times;</button>
+        </div>
+        <div style={{ overflowY: "auto", padding: 20 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function ScreenEmployees() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -34,6 +61,8 @@ export function ScreenEmployees() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [view, setView] = useState<"list" | "detail">("list");
+  
+  // Employee form states
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -48,9 +77,53 @@ export function ScreenEmployees() {
     emergency_contact_phone: "",
     status: "active",
   });
+  
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const { can } = usePermissions();
+
+  // Attendance form
+  const [showAttendanceForm, setShowAttendanceForm] = useState(false);
+  const [attendanceForm, setAttendanceForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    check_in: "08:00",
+    check_out: "17:00",
+    status: "present",
+  });
+
+  // Leave form
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    type: "annual",
+    start_date: "",
+    end_date: "",
+    reason: "",
+  });
+
+  // Agreement form
+  const [showAgreementForm, setShowAgreementForm] = useState(false);
+  const [agreementForm, setAgreementForm] = useState({
+    type: "employment_contract",
+    title: "",
+    description: "",
+    signed_date: new Date().toISOString().split('T')[0],
+    status: "draft",
+  });
+
+  // Payment Details form
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    base_salary: "",
+    housing_allowance: "",
+    transport_allowance: "",
+    medical_allowance: "",
+    other_allowances: "",
+    bonus: "",
+    bank_name: "",
+    bank_account: "",
+    bank_branch: "",
+    payment_frequency: "monthly",
+  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -136,6 +209,67 @@ export function ScreenEmployees() {
     });
     setShowEditForm(true);
     setFormError("");
+  }
+
+  function openPaymentForm(employee: any) {
+    setSelectedEmployee(employee);
+    if (employee.payment_detail) {
+      setPaymentForm({
+        base_salary: employee.payment_detail.base_salary || "",
+        housing_allowance: employee.payment_detail.housing_allowance || "",
+        transport_allowance: employee.payment_detail.transport_allowance || "",
+        medical_allowance: employee.payment_detail.medical_allowance || "",
+        other_allowances: employee.payment_detail.other_allowances || "",
+        bonus: employee.payment_detail.bonus || "",
+        bank_name: employee.payment_detail.bank_name || "",
+        bank_account: employee.payment_detail.bank_account || "",
+        bank_branch: employee.payment_detail.bank_branch || "",
+        payment_frequency: employee.payment_detail.payment_frequency || "monthly",
+      });
+    } else {
+      setPaymentForm({
+        base_salary: "",
+        housing_allowance: "",
+        transport_allowance: "",
+        medical_allowance: "",
+        other_allowances: "",
+        bonus: "",
+        bank_name: "",
+        bank_account: "",
+        bank_branch: "",
+        payment_frequency: "monthly",
+      });
+    }
+    setShowPaymentForm(true);
+  }
+
+  async function handleSavePayment() {
+    if (!paymentForm.base_salary) {
+      alert("Base salary is required.");
+      return;
+    }
+    try {
+      const res = await apiPost("/employee-payment-details", {
+        employee_id: selectedEmployee.id,
+        base_salary: parseFloat(paymentForm.base_salary) || 0,
+        housing_allowance: parseFloat(paymentForm.housing_allowance) || 0,
+        transport_allowance: parseFloat(paymentForm.transport_allowance) || 0,
+        medical_allowance: parseFloat(paymentForm.medical_allowance) || 0,
+        other_allowances: parseFloat(paymentForm.other_allowances) || 0,
+        bonus: parseFloat(paymentForm.bonus) || 0,
+        bank_name: paymentForm.bank_name,
+        bank_account: paymentForm.bank_account,
+        bank_branch: paymentForm.bank_branch,
+        payment_frequency: paymentForm.payment_frequency,
+      });
+      if (res.id || res.message) {
+        alert("Payment details saved successfully!");
+        setShowPaymentForm(false);
+        selectEmployee(selectedEmployee);
+      }
+    } catch {
+      alert("Failed to save payment details.");
+    }
   }
 
   function getStatusColor(status: string) {
@@ -228,33 +362,76 @@ export function ScreenEmployees() {
 
               <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Hire Date</div>
               <div style={{ fontSize: 12 }}>{selectedEmployee.hire_date ? new Date(selectedEmployee.hire_date).toLocaleDateString() : "—"}</div>
+
+              {/* Payment Summary Button */}
+              <button
+                className="btn btn-primary"
+                style={{ width: "100%", marginTop: 12, justifyContent: "center" }}
+                onClick={() => openPaymentForm(selectedEmployee)}
+              >
+                <i className="ti ti-credit-card"></i> Manage Payment Details
+              </button>
             </Card>
 
-            {/* Payment Summary */}
+            {/* Payment Summary Display */}
             {selectedEmployee.payment_detail && (
               <Card>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Payment Summary</div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
                   <span style={{ color: "var(--text-3)" }}>Base Salary</span>
-                  <span>KES {Number(selectedEmployee.payment_detail.base_salary).toLocaleString()}</span>
+                  <span>KES {Number(selectedEmployee.payment_detail.base_salary || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <span style={{ color: "var(--text-3)" }}>Allowances</span>
-                  <span>KES {Number(selectedEmployee.payment_detail.housing_allowance + selectedEmployee.payment_detail.transport_allowance + selectedEmployee.payment_detail.medical_allowance + selectedEmployee.payment_detail.other_allowances).toLocaleString()}</span>
+                  <span style={{ color: "var(--text-3)" }}>Housing Allowance</span>
+                  <span>KES {Number(selectedEmployee.payment_detail.housing_allowance || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
+                  <span style={{ color: "var(--text-3)" }}>Transport Allowance</span>
+                  <span>KES {Number(selectedEmployee.payment_detail.transport_allowance || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
+                  <span style={{ color: "var(--text-3)" }}>Medical Allowance</span>
+                  <span>KES {Number(selectedEmployee.payment_detail.medical_allowance || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
+                  <span style={{ color: "var(--text-3)" }}>Other Allowances</span>
+                  <span>KES {Number(selectedEmployee.payment_detail.other_allowances || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>
+                  <span style={{ color: "var(--text-3)" }}>Bonus</span>
+                  <span>KES {Number(selectedEmployee.payment_detail.bonus || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, padding: "8px 0", borderTop: "0.5px solid var(--border)", marginTop: 4 }}>
-                  <span>Total</span>
-                  <span style={{ color: "var(--teal-light)" }}>KES {Number(selectedEmployee.payment_detail.base_salary + selectedEmployee.payment_detail.housing_allowance + selectedEmployee.payment_detail.transport_allowance + selectedEmployee.payment_detail.medical_allowance + selectedEmployee.payment_detail.other_allowances + selectedEmployee.payment_detail.bonus).toLocaleString()}</span>
+                  <span>Total Compensation</span>
+                  <span style={{ color: "var(--teal-light)" }}>
+                    KES {(
+                      Number(selectedEmployee.payment_detail.base_salary || 0) +
+                      Number(selectedEmployee.payment_detail.housing_allowance || 0) +
+                      Number(selectedEmployee.payment_detail.transport_allowance || 0) +
+                      Number(selectedEmployee.payment_detail.medical_allowance || 0) +
+                      Number(selectedEmployee.payment_detail.other_allowances || 0) +
+                      Number(selectedEmployee.payment_detail.bonus || 0)
+                    ).toLocaleString()}
+                  </span>
                 </div>
               </Card>
             )}
           </div>
 
-          {/* Right Panel - Attendance & Leave */}
+          {/* Right Panel - Attendance, Leave, Agreements */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Attendance */}
             <Card>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Recent Attendance</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Recent Attendance</div>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ fontSize: 11, padding: "4px 12px", height: 30 }}
+                  onClick={() => setShowAttendanceForm(true)}
+                >
+                  <i className="ti ti-plus"></i> Add
+                </button>
+              </div>
               {selectedEmployee.attendance?.length === 0 && (
                 <div style={{ fontSize: 12, color: "var(--text-4)" }}>No attendance records</div>
               )}
@@ -284,9 +461,18 @@ export function ScreenEmployees() {
 
             {/* Leave Requests */}
             <Card>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Pending Leave Requests</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Leave Requests</div>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ fontSize: 11, padding: "4px 12px", height: 30 }}
+                  onClick={() => setShowLeaveForm(true)}
+                >
+                  <i className="ti ti-plus"></i> Request
+                </button>
+              </div>
               {selectedEmployee.leave_requests?.length === 0 && (
-                <div style={{ fontSize: 12, color: "var(--text-4)" }}>No pending leave requests</div>
+                <div style={{ fontSize: 12, color: "var(--text-4)" }}>No leave requests</div>
               )}
               {selectedEmployee.leave_requests?.map((l: any) => (
                 <div key={l.id} style={{
@@ -301,22 +487,34 @@ export function ScreenEmployees() {
                     <div style={{ fontWeight: 500 }}>{l.type.replace("_", " ")}</div>
                     <div style={{ fontSize: 10, color: "var(--text-3)" }}>{new Date(l.start_date).toLocaleDateString()} - {new Date(l.end_date).toLocaleDateString()}</div>
                   </div>
-                  <span style={{
-                    fontSize: 10,
-                    padding: "2px 8px",
-                    borderRadius: 12,
-                    background: "var(--amber-fill)",
-                    color: "var(--amber-light)",
-                  }}>
-                    {l.days} days
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, color: "var(--text-3)" }}>{l.days} days</span>
+                    <span style={{
+                      fontSize: 10,
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                      background: l.status === "approved" ? "var(--teal-fill)" : l.status === "pending" ? "var(--amber-fill)" : "var(--red-fill)",
+                      color: l.status === "approved" ? "var(--teal-light)" : l.status === "pending" ? "var(--amber-light)" : "var(--red-light)",
+                    }}>
+                      {l.status}
+                    </span>
+                  </div>
                 </div>
               ))}
             </Card>
 
             {/* Agreements */}
             <Card>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Agreements</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Agreements</div>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ fontSize: 11, padding: "4px 12px", height: 30 }}
+                  onClick={() => setShowAgreementForm(true)}
+                >
+                  <i className="ti ti-plus"></i> Add
+                </button>
+              </div>
               {selectedEmployee.agreements?.length === 0 && (
                 <div style={{ fontSize: 12, color: "var(--text-4)" }}>No agreements</div>
               )}
@@ -347,6 +545,414 @@ export function ScreenEmployees() {
             </Card>
           </div>
         </div>
+
+        {/* Attendance Form Modal */}
+        {showAttendanceForm && (
+          <Modal title="Add Attendance" onClose={() => setShowAttendanceForm(false)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Date</label>
+                <input
+                  type="date"
+                  value={attendanceForm.date}
+                  onChange={(e) => setAttendanceForm({...attendanceForm, date: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Check In</label>
+                  <input
+                    type="time"
+                    value={attendanceForm.check_in}
+                    onChange={(e) => setAttendanceForm({...attendanceForm, check_in: e.target.value})}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Check Out</label>
+                  <input
+                    type="time"
+                    value={attendanceForm.check_out}
+                    onChange={(e) => setAttendanceForm({...attendanceForm, check_out: e.target.value})}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <select
+                  value={attendanceForm.status}
+                  onChange={(e) => setAttendanceForm({...attendanceForm, status: e.target.value})}
+                  style={selectStyle}
+                >
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="late">Late</option>
+                  <option value="half_day">Half Day</option>
+                  <option value="holiday">Holiday</option>
+                  <option value="sick">Sick</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+              <button className="btn" onClick={() => setShowAttendanceForm(false)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={async () => {
+                  try {
+                    const res = await apiPost("/attendance", {
+                      employee_id: selectedEmployee.id,
+                      date: attendanceForm.date,
+                      check_in: attendanceForm.check_in,
+                      check_out: attendanceForm.check_out,
+                      status: attendanceForm.status,
+                    });
+                    if (res.id) {
+                      alert("Attendance recorded successfully!");
+                      setShowAttendanceForm(false);
+                      selectEmployee(selectedEmployee);
+                    }
+                  } catch {
+                    alert("Failed to record attendance.");
+                  }
+                }}
+              >
+                <i className="ti ti-check"></i> Save
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Leave Request Form Modal */}
+        {showLeaveForm && (
+          <Modal title="Request Leave" onClose={() => setShowLeaveForm(false)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Leave Type</label>
+                <select
+                  value={leaveForm.type}
+                  onChange={(e) => setLeaveForm({...leaveForm, type: e.target.value})}
+                  style={selectStyle}
+                >
+                  <option value="annual">Annual Leave</option>
+                  <option value="sick">Sick Leave</option>
+                  <option value="maternity">Maternity Leave</option>
+                  <option value="paternity">Paternity Leave</option>
+                  <option value="bereavement">Bereavement</option>
+                  <option value="study">Study Leave</option>
+                  <option value="unpaid">Unpaid Leave</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Start Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.start_date}
+                    onChange={(e) => setLeaveForm({...leaveForm, start_date: e.target.value})}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>End Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.end_date}
+                    onChange={(e) => setLeaveForm({...leaveForm, end_date: e.target.value})}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Reason</label>
+                <textarea
+                  value={leaveForm.reason}
+                  onChange={(e) => setLeaveForm({...leaveForm, reason: e.target.value})}
+                  placeholder="Reason for leave..."
+                  rows={3}
+                  style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+              <button className="btn" onClick={() => setShowLeaveForm(false)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={async () => {
+                  if (!leaveForm.start_date || !leaveForm.end_date) {
+                    alert("Please select start and end dates.");
+                    return;
+                  }
+                  try {
+                    const res = await apiPost("/leave-requests", {
+                      employee_id: selectedEmployee.id,
+                      type: leaveForm.type,
+                      start_date: leaveForm.start_date,
+                      end_date: leaveForm.end_date,
+                      reason: leaveForm.reason,
+                    });
+                    if (res.id) {
+                      alert("Leave request submitted successfully!");
+                      setShowLeaveForm(false);
+                      selectEmployee(selectedEmployee);
+                    }
+                  } catch {
+                    alert("Failed to submit leave request.");
+                  }
+                }}
+              >
+                <i className="ti ti-check"></i> Submit Request
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Agreement Form Modal */}
+        {showAgreementForm && (
+          <Modal title="Add Agreement" onClose={() => setShowAgreementForm(false)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Agreement Type</label>
+                <select
+                  value={agreementForm.type}
+                  onChange={(e) => setAgreementForm({...agreementForm, type: e.target.value})}
+                  style={selectStyle}
+                >
+                  <option value="employment_contract">Employment Contract</option>
+                  <option value="nda">NDA</option>
+                  <option value="non_compete">Non-Compete</option>
+                  <option value="salary_agreement">Salary Agreement</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Title</label>
+                <input
+                  type="text"
+                  value={agreementForm.title}
+                  onChange={(e) => setAgreementForm({...agreementForm, title: e.target.value})}
+                  placeholder="Agreement title"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Description</label>
+                <textarea
+                  value={agreementForm.description}
+                  onChange={(e) => setAgreementForm({...agreementForm, description: e.target.value})}
+                  placeholder="Agreement description..."
+                  rows={3}
+                  style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Signed Date</label>
+                <input
+                  type="date"
+                  value={agreementForm.signed_date}
+                  onChange={(e) => setAgreementForm({...agreementForm, signed_date: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <select
+                  value={agreementForm.status}
+                  onChange={(e) => setAgreementForm({...agreementForm, status: e.target.value})}
+                  style={selectStyle}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="signed">Signed</option>
+                  <option value="expired">Expired</option>
+                  <option value="terminated">Terminated</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+              <button className="btn" onClick={() => setShowAgreementForm(false)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={async () => {
+                  if (!agreementForm.title) {
+                    alert("Please enter a title.");
+                    return;
+                  }
+                  try {
+                    const res = await apiPost("/employee-agreements", {
+                      employee_id: selectedEmployee.id,
+                      type: agreementForm.type,
+                      title: agreementForm.title,
+                      description: agreementForm.description,
+                      signed_date: agreementForm.signed_date,
+                      status: agreementForm.status,
+                    });
+                    if (res.id) {
+                      alert("Agreement added successfully!");
+                      setShowAgreementForm(false);
+                      selectEmployee(selectedEmployee);
+                    }
+                  } catch {
+                    alert("Failed to add agreement.");
+                  }
+                }}
+              >
+                <i className="ti ti-check"></i> Save
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Payment Details Form Modal */}
+        {showPaymentForm && selectedEmployee && (
+          <Modal title={`Payment Details - ${selectedEmployee.first_name} ${selectedEmployee.last_name}`} onClose={() => setShowPaymentForm(false)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Base Salary *</label>
+                  <input
+                    type="number"
+                    value={paymentForm.base_salary}
+                    onChange={(e) => setPaymentForm({...paymentForm, base_salary: e.target.value})}
+                    placeholder="0"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Housing Allowance</label>
+                  <input
+                    type="number"
+                    value={paymentForm.housing_allowance}
+                    onChange={(e) => setPaymentForm({...paymentForm, housing_allowance: e.target.value})}
+                    placeholder="0"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Transport Allowance</label>
+                  <input
+                    type="number"
+                    value={paymentForm.transport_allowance}
+                    onChange={(e) => setPaymentForm({...paymentForm, transport_allowance: e.target.value})}
+                    placeholder="0"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Medical Allowance</label>
+                  <input
+                    type="number"
+                    value={paymentForm.medical_allowance}
+                    onChange={(e) => setPaymentForm({...paymentForm, medical_allowance: e.target.value})}
+                    placeholder="0"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Other Allowances</label>
+                  <input
+                    type="number"
+                    value={paymentForm.other_allowances}
+                    onChange={(e) => setPaymentForm({...paymentForm, other_allowances: e.target.value})}
+                    placeholder="0"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Bonus</label>
+                  <input
+                    type="number"
+                    value={paymentForm.bonus}
+                    onChange={(e) => setPaymentForm({...paymentForm, bonus: e.target.value})}
+                    placeholder="0"
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Bank Name</label>
+                  <input
+                    type="text"
+                    value={paymentForm.bank_name}
+                    onChange={(e) => setPaymentForm({...paymentForm, bank_name: e.target.value})}
+                    placeholder="e.g. KCB Bank"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Bank Account</label>
+                  <input
+                    type="text"
+                    value={paymentForm.bank_account}
+                    onChange={(e) => setPaymentForm({...paymentForm, bank_account: e.target.value})}
+                    placeholder="Account number"
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Bank Branch</label>
+                  <input
+                    type="text"
+                    value={paymentForm.bank_branch}
+                    onChange={(e) => setPaymentForm({...paymentForm, bank_branch: e.target.value})}
+                    placeholder="e.g. Nairobi"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Payment Frequency</label>
+                  <select
+                    value={paymentForm.payment_frequency}
+                    onChange={(e) => setPaymentForm({...paymentForm, payment_frequency: e.target.value})}
+                    style={selectStyle}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="biweekly">Bi-Weekly</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Total Preview */}
+              <div style={{
+                background: "var(--bg-app)",
+                borderRadius: "var(--radius-md)",
+                padding: "12px 16px",
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 13,
+                fontWeight: 600,
+                borderTop: "0.5px solid var(--border)",
+                marginTop: 8,
+              }}>
+                <span>Total Monthly Compensation</span>
+                <span style={{ color: "var(--teal-light)" }}>
+                  KES {(
+                    (parseFloat(paymentForm.base_salary) || 0) +
+                    (parseFloat(paymentForm.housing_allowance) || 0) +
+                    (parseFloat(paymentForm.transport_allowance) || 0) +
+                    (parseFloat(paymentForm.medical_allowance) || 0) +
+                    (parseFloat(paymentForm.other_allowances) || 0) +
+                    (parseFloat(paymentForm.bonus) || 0)
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+              <button className="btn" onClick={() => setShowPaymentForm(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSavePayment}>
+                <i className="ti ti-check"></i> Save Payment Details
+              </button>
+            </div>
+          </Modal>
+        )}
       </div>
     );
   }
@@ -493,407 +1099,308 @@ export function ScreenEmployees() {
 
       {/* Create Employee Modal */}
       {showForm && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 100,
-        }}>
-          <div style={{
-            background: "var(--bg-panel)",
-            borderRadius: "var(--radius-lg)",
-            width: 560,
-            maxHeight: "90vh",
-            display: "flex",
-            flexDirection: "column",
-            border: "0.5px solid var(--border)",
-          }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "16px 20px",
-              borderBottom: "0.5px solid var(--border)",
-            }}>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Add Employee</span>
-              <button onClick={() => setShowForm(false)} style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-3)",
-                fontSize: 22,
-              }}>×</button>
+        <Modal title="Add Employee" onClose={() => setShowForm(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {formError && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--red-fill)",
+                border: "0.5px solid var(--red)",
+                borderRadius: "var(--radius-md)",
+                padding: "9px 12px",
+                fontSize: 12,
+                color: "var(--red-light)",
+              }}>
+                <i className="ti ti-alert-circle"></i> {formError}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>First Name *</label>
+                <input
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                  placeholder="John"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Last Name *</label>
+                <input
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                  placeholder="Doe"
+                  style={inputStyle}
+                />
+              </div>
             </div>
 
-            <div style={{ overflowY: "auto", padding: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {formError && (
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "var(--red-fill)",
-                    border: "0.5px solid var(--red)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "9px 12px",
-                    fontSize: 12,
-                    color: "var(--red-light)",
-                  }}>
-                    <i className="ti ti-alert-circle"></i> {formError}
-                  </div>
-                )}
+            <div>
+              <label style={labelStyle}>Email *</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="john.doe@company.com"
+                style={inputStyle}
+              />
+            </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>First Name *</label>
-                    <input
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                      placeholder="John"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Last Name *</label>
-                    <input
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                      placeholder="Doe"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Email *</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="john.doe@company.com"
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Phone</label>
-                    <input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="+254 700 000000"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Position</label>
-                    <input
-                      value={formData.position}
-                      onChange={(e) => setFormData({...formData, position: e.target.value})}
-                      placeholder="e.g. Software Engineer"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Department</label>
-                    <input
-                      value={formData.department}
-                      onChange={(e) => setFormData({...formData, department: e.target.value})}
-                      placeholder="e.g. Engineering"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Employment Type</label>
-                    <select
-                      value={formData.employment_type}
-                      onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
-                      style={selectStyle}
-                    >
-                      <option value="full_time">Full Time</option>
-                      <option value="part_time">Part Time</option>
-                      <option value="contract">Contract</option>
-                      <option value="internship">Internship</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Hire Date</label>
-                  <input
-                    type="date"
-                    value={formData.hire_date}
-                    onChange={(e) => setFormData({...formData, hire_date: e.target.value})}
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Address</label>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    placeholder="Physical address"
-                    rows={2}
-                    style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Emergency Contact Name</label>
-                    <input
-                      value={formData.emergency_contact_name}
-                      onChange={(e) => setFormData({...formData, emergency_contact_name: e.target.value})}
-                      placeholder="e.g. Jane Doe"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Emergency Contact Phone</label>
-                    <input
-                      value={formData.emergency_contact_phone}
-                      onChange={(e) => setFormData({...formData, emergency_contact_phone: e.target.value})}
-                      placeholder="+254 700 000000"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Phone</label>
+                <input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  placeholder="+254 700 000000"
+                  style={inputStyle}
+                />
               </div>
+              <div>
+                <label style={labelStyle}>Position</label>
+                <input
+                  value={formData.position}
+                  onChange={(e) => setFormData({...formData, position: e.target.value})}
+                  placeholder="e.g. Software Engineer"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-                <button className="btn" onClick={() => setShowForm(false)} disabled={formLoading}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleCreate} disabled={formLoading}>
-                  {formLoading ? <><i className="ti ti-loader"></i> Creating...</> : <><i className="ti ti-plus"></i> Add Employee</>}
-                </button>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Department</label>
+                <input
+                  value={formData.department}
+                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  placeholder="e.g. Engineering"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Employment Type</label>
+                <select
+                  value={formData.employment_type}
+                  onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
+                  style={selectStyle}
+                >
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="internship">Internship</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Hire Date</label>
+              <input
+                type="date"
+                value={formData.hire_date}
+                onChange={(e) => setFormData({...formData, hire_date: e.target.value})}
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Address</label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                placeholder="Physical address"
+                rows={2}
+                style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Emergency Contact Name</label>
+                <input
+                  value={formData.emergency_contact_name}
+                  onChange={(e) => setFormData({...formData, emergency_contact_name: e.target.value})}
+                  placeholder="e.g. Jane Doe"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Emergency Contact Phone</label>
+                <input
+                  value={formData.emergency_contact_phone}
+                  onChange={(e) => setFormData({...formData, emergency_contact_phone: e.target.value})}
+                  placeholder="+254 700 000000"
+                  style={inputStyle}
+                />
               </div>
             </div>
           </div>
-        </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+            <button className="btn" onClick={() => setShowForm(false)} disabled={formLoading}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleCreate} disabled={formLoading}>
+              {formLoading ? <><i className="ti ti-loader"></i> Creating...</> : <><i className="ti ti-plus"></i> Add Employee</>}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Edit Employee Modal */}
       {showEditForm && selectedEmployee && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 100,
-        }}>
-          <div style={{
-            background: "var(--bg-panel)",
-            borderRadius: "var(--radius-lg)",
-            width: 560,
-            maxHeight: "90vh",
-            display: "flex",
-            flexDirection: "column",
-            border: "0.5px solid var(--border)",
-          }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "16px 20px",
-              borderBottom: "0.5px solid var(--border)",
-            }}>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Edit Employee</span>
-              <button onClick={() => { setShowEditForm(false); setSelectedEmployee(null); }} style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-3)",
-                fontSize: 22,
-              }}>×</button>
+        <Modal title="Edit Employee" onClose={() => { setShowEditForm(false); setSelectedEmployee(null); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {formError && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--red-fill)",
+                border: "0.5px solid var(--red)",
+                borderRadius: "var(--radius-md)",
+                padding: "9px 12px",
+                fontSize: 12,
+                color: "var(--red-light)",
+              }}>
+                <i className="ti ti-alert-circle"></i> {formError}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>First Name *</label>
+                <input
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Last Name *</label>
+                <input
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
             </div>
 
-            <div style={{ overflowY: "auto", padding: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {formError && (
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "var(--red-fill)",
-                    border: "0.5px solid var(--red)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "9px 12px",
-                    fontSize: 12,
-                    color: "var(--red-light)",
-                  }}>
-                    <i className="ti ti-alert-circle"></i> {formError}
-                  </div>
-                )}
+            <div>
+              <label style={labelStyle}>Email *</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                style={inputStyle}
+              />
+            </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>First Name *</label>
-                    <input
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                      placeholder="John"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Last Name *</label>
-                    <input
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                      placeholder="Doe"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Email *</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="john.doe@company.com"
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Phone</label>
-                    <input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="+254 700 000000"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Position</label>
-                    <input
-                      value={formData.position}
-                      onChange={(e) => setFormData({...formData, position: e.target.value})}
-                      placeholder="e.g. Software Engineer"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Department</label>
-                    <input
-                      value={formData.department}
-                      onChange={(e) => setFormData({...formData, department: e.target.value})}
-                      placeholder="e.g. Engineering"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Employment Type</label>
-                    <select
-                      value={formData.employment_type}
-                      onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
-                      style={selectStyle}
-                    >
-                      <option value="full_time">Full Time</option>
-                      <option value="part_time">Part Time</option>
-                      <option value="contract">Contract</option>
-                      <option value="internship">Internship</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Hire Date</label>
-                  <input
-                    type="date"
-                    value={formData.hire_date}
-                    onChange={(e) => setFormData({...formData, hire_date: e.target.value})}
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    style={selectStyle}
-                  >
-                    <option value="active">Active</option>
-                    <option value="on_leave">On Leave</option>
-                    <option value="suspended">Suspended</option>
-                    <option value="terminated">Terminated</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Address</label>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    placeholder="Physical address"
-                    rows={2}
-                    style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Emergency Contact Name</label>
-                    <input
-                      value={formData.emergency_contact_name}
-                      onChange={(e) => setFormData({...formData, emergency_contact_name: e.target.value})}
-                      placeholder="e.g. Jane Doe"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 6 }}>Emergency Contact Phone</label>
-                    <input
-                      value={formData.emergency_contact_phone}
-                      onChange={(e) => setFormData({...formData, emergency_contact_phone: e.target.value})}
-                      placeholder="+254 700 000000"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Phone</label>
+                <input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  style={inputStyle}
+                />
               </div>
+              <div>
+                <label style={labelStyle}>Position</label>
+                <input
+                  value={formData.position}
+                  onChange={(e) => setFormData({...formData, position: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-                <button className="btn" onClick={() => { setShowEditForm(false); setSelectedEmployee(null); }} disabled={formLoading}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleUpdate} disabled={formLoading}>
-                  {formLoading ? <><i className="ti ti-loader"></i> Updating...</> : <><i className="ti ti-check"></i> Update Employee</>}
-                </button>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Department</label>
+                <input
+                  value={formData.department}
+                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Employment Type</label>
+                <select
+                  value={formData.employment_type}
+                  onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
+                  style={selectStyle}
+                >
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="internship">Internship</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Hire Date</label>
+              <input
+                type="date"
+                value={formData.hire_date}
+                onChange={(e) => setFormData({...formData, hire_date: e.target.value})}
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                style={selectStyle}
+              >
+                <option value="active">Active</option>
+                <option value="on_leave">On Leave</option>
+                <option value="suspended">Suspended</option>
+                <option value="terminated">Terminated</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Address</label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                rows={2}
+                style={{ ...inputStyle, height: "auto", padding: "8px 12px", resize: "vertical" }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Emergency Contact Name</label>
+                <input
+                  value={formData.emergency_contact_name}
+                  onChange={(e) => setFormData({...formData, emergency_contact_name: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Emergency Contact Phone</label>
+                <input
+                  value={formData.emergency_contact_phone}
+                  onChange={(e) => setFormData({...formData, emergency_contact_phone: e.target.value})}
+                  style={inputStyle}
+                />
               </div>
             </div>
           </div>
-        </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+            <button className="btn" onClick={() => { setShowEditForm(false); setSelectedEmployee(null); }} disabled={formLoading}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleUpdate} disabled={formLoading}>
+              {formLoading ? <><i className="ti ti-loader"></i> Updating...</> : <><i className="ti ti-check"></i> Update Employee</>}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  height: 38,
-  background: "var(--bg-card)",
-  border: "0.5px solid var(--border-2)",
-  borderRadius: "var(--radius-md)",
-  padding: "0 12px",
-  fontSize: 13,
-  color: "var(--text-1)",
-};
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  cursor: "pointer",
-};
